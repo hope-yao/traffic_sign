@@ -1,0 +1,98 @@
+self.sess.run(init)
+self.saver.restore(self.sess,
+                '/home/exx/Documents/Hope/BEGAN-tensorflow-regressor-20170811-GED-eclipse-ptx-traffic/models/GAN/GAN_2017_11_05_23_31_42/experiment_92013.ckpt')
+
+
+
+
+dz = self.sess.run(self.d_z, feed_dict_fix)
+z = self.sess.run(self.z, feed_dict_fix)
+np.save('dz.npy',dz)
+np.save('z.npy',z)
+np.save('y.npy',y_input_fix)
+
+
+import numpy as np
+import seaborn as sns
+
+y=np.load('y.npy')
+z=np.load('z.npy')
+dz=np.load('dz.npy')
+
+bs = 64
+numz = 20
+
+mask  = np.concatenate([ np.tile(y[:,0:1],(1,numz)),np.tile(y[:,1:2],(1,numz)),np.tile(y[:,2:3],(1,numz)),np.tile(y[:,3:4],(1,numz))],1)
+
+dzr=dz[bs:bs*2,:]
+dzf=dz[0:bs,:]
+
+dzr0=dzr[:,0:numz]
+dzr0 = dzr0[mask[:,0:numz]!= 0]
+
+
+dzf0=dzf[:,0:numz]
+dzf0 = dzf0[mask[:,0:numz]!= 0]
+
+z0=z[:,0:numz]
+z0 = z0[mask[:,0:numz]!= 0]
+
+
+
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+plt.figure(figsize=(5,5))
+gs1 = gridspec.GridSpec(2, 2)
+
+
+ax0 = plt.subplot(gs1[0:1, 0:1])
+sns.distplot(dzr0.flatten(),kde_kws={"color": "k", "lw": 3, "label": "dz_real"}, ax = ax0)
+sns.distplot(dzf0.flatten(),kde_kws={"color": "r", "lw": 3, "label": "dz_fake"}, ax = ax0)
+sns.distplot(z0.flatten(),kde_kws={"color": "b", "lw": 3, "label": "z_input"}, ax = ax0)
+plt.setp(ax0, title='fist subnet')
+
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from sklearn.manifold import TSNE
+z0 = z[:,:numz]
+dzf0 = dz[:bs,:numz]
+dzr0 = dz[bs:,:numz]
+X = np.concatenate([z0,dzr0,dzf0])
+model = TSNE(n_components=2, perplexity=25.0, random_state=0)
+np.set_printoptions(suppress=True)
+T = model.fit_transform(X)
+import seaborn as sns
+import matplotlib.pyplot as plt
+fig = plt.figure()
+# ax = plt.axes(projection='3d')
+for i,k in enumerate(T):
+    if i<bs*1:
+        plt.plot(T[i,0],T[i,1],'k.')
+    elif i<bs*2:
+        plt.plot(T[i,0],T[i,1],'r.')
+    elif i<bs*3:
+        plt.plot(T[i,0],T[i,1],'b.')
+
