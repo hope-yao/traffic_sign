@@ -114,6 +114,47 @@ def calc_eclipse_loss_analy(dz,z,N_Subnets):
 
     return  [l_f,l_r], [m_f,m_r], tf.reduce_mean(tmp)#, (mi_z, mi_dzf, dzf_i)
 
+def wy_calc_eclipse_loss_analy(dz,z,y,N_Subnets):
+    dzf, dzr = tf.split(dz,2)
+    l_f = []
+    l_r = []
+    m_r = []
+    m_f = []
+    dim1, dim2 = dzf.get_shape().as_list()
+    for i in range(N_Subnets):
+        dzf_i = tf.slice(dzf,(0,dim2/N_Subnets*i),(dim1,dim2/N_Subnets))
+        dzr_i = tf.slice(dzr,(0,dim2/N_Subnets*i),(dim1,dim2/N_Subnets))
+        z_i = tf.slice(z,(0,dim2/N_Subnets*i),(dim1,dim2/N_Subnets))
+        y_i = tf.slice(y, (0, i), (dim1, 1))
+
+        dzf_mean = tf.tile(tf.expand_dims(tf.reduce_mean(dzf_i*y_i,0)/tf.reduce_sum(y), 0), (dim1, 1))
+        dzf_i = dzf_i - (dzf_mean+1e-8)
+        dzr_mean = tf.tile(tf.expand_dims(tf.reduce_mean(dzf_i*y_i,0)/tf.reduce_sum(y), 0), (dim1, 1))
+        dzr_i = dzr_i - (dzr_mean+1e-8)
+        z_mean = tf.tile(tf.expand_dims(tf.reduce_mean(dzf_i*y_i,0)/tf.reduce_sum(y), 0), (dim1, 1))
+
+        mi_dzf = tf.matmul(tf.matmul(tf.transpose(dzf_i, (1, 0)),tf.diag(y_i[:,0])), dzf_i) / dim1
+        mi_dzr = tf.matmul(tf.matmul(tf.transpose(dzr_i, (1, 0)),tf.diag(y_i[:,0])), dzf_i) / dim1
+        mi_z = tf.eye(dim2/N_Subnets,dim2/N_Subnets)
+
+
+        res_f_i = tf.square((mi_dzf-mi_z))#/mi_z+1e-8)
+        l_f_i = tf.reduce_mean(res_f_i) + tf.reduce_mean(tf.diag_part(res_f_i))#+res_det_f_i ##
+        l_f += [tf.expand_dims(l_f_i, 0)]
+        m_f_i = tf.reduce_mean(tf.square(dzf_mean - z_mean))
+        m_f += [tf.expand_dims(m_f_i, 0)]
+
+        res_r_i = tf.square((mi_dzr-mi_z))#/mi_z+1e-8)
+        l_r_i = tf.reduce_mean(res_r_i) + tf.reduce_mean(tf.diag_part(res_r_i))#+res_det_f_i ##
+        l_r += [tf.expand_dims(l_r_i, 0)]
+        m_r_i = tf.reduce_mean(tf.square(dzr_mean - z_mean))
+        m_r += [tf.expand_dims(m_r_i, 0)]
+
+        if i==0:
+            tmp = mi_dzf
+
+    return  [l_f,l_r], [m_f,m_r], tf.reduce_mean(tmp)#, (mi_z, mi_dzf, dzf_i)
+
 def Encoder(x, z_num, repeat_num, hidden_num, data_format):
 
     # Encoder
@@ -129,6 +170,24 @@ def Encoder(x, z_num, repeat_num, hidden_num, data_format):
     z = slim.fully_connected(x, z_num, activation_fn=None) # times 2 for mean and variance
 
     return  z
+
+def act_Encoder(x, z_num, repeat_num, hidden_num, data_format):
+
+    # Encoder
+    x = slim.conv2d(x, hidden_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
+    act = [x]
+    for idx in range(repeat_num):
+        channel_num = hidden_num * (idx + 1)
+        x = slim.conv2d(x, channel_num, 3, 2, activation_fn=tf.nn.elu, data_format=data_format)
+        act += [x]
+        # x = slim.conv2d(x, channel_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
+        # if idx < repeat_num - 1:
+        #     # x = slim.conv2d(x, channel_num, 3, 2, activation_fn=tf.nn.elu, data_format=data_format)
+        #     x = tf.contrib.layers.max_pool2d(x, [2, 2], [2, 2], padding='VALID', data_format=data_format)
+    x = tf.reshape(x, [-1, np.prod([8, 8, channel_num])])
+    z = slim.fully_connected(x, z_num, activation_fn=None) # times 2 for mean and variance
+
+    return  z,act
 
 def Decoder(y_data, z, input_channel, z_num, repeat_num, hidden_num, data_format):
     ch_data = 1  # binary only

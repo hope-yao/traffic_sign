@@ -20,13 +20,13 @@ net_arg.add_argument('--conv_hidden_num', type=int, default=32,
                      choices=[32, 128],help='n in the paper')
 # number of hiden z(s) for all sub-networks.
 # Twice the number of mean and vars for vae.
-net_arg.add_argument('--z_num', type=int, default=4*20, choices=[64, 128])
+net_arg.add_argument('--z_num', type=int, default=3*6, choices=[64, 128])
 
 # Data
 data_arg = add_argument_group('Data')
 data_arg.add_argument('--dataset', type=str, default='CelebA')
 data_arg.add_argument('--split', type=str, default='train')
-data_arg.add_argument('--batch_size', type=int, default=64)
+data_arg.add_argument('--batch_size', type=int, default=16)
 data_arg.add_argument('--grayscale', type=str2bool, default=False)
 data_arg.add_argument('--num_worker', type=int, default=4)
 

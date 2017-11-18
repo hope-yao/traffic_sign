@@ -131,6 +131,7 @@ class Trainer(object):
         self.sess = tf.Session(config=tfconfig)
         init = tf.global_variables_initializer()
         self.sess.run(init)
+        print('here')
         # self.saver.restore(self.sess,
         #                    '/home/exx/Documents/Hope/BEGAN-tensorflow-regressor-20170811-GED-eclipse-ptx-traffic/models/GAN/GAN_2017_11_01_15_04_47/experiment_185390.ckpt')
         # self.saver.restore(self.sess,
@@ -139,7 +140,8 @@ class Trainer(object):
         # self.saver.restore(self.sess, "./models/GAN/GAN_2017_08_12_23_30_24/experiment_102438.ckpt")
 
 
-    def valid(self,valid_x, valid_y, trained_model, para_list, gpu_idx=0):
+
+    def valid(self,valid_x, valid_y, trained_model, para_list, name = 'traffic_sign', gpu_idx=0):
         with tf.device('gpu:{}'.format(gpu_idx)):
             self.saver.restore(self.sess,trained_model)
 
@@ -163,7 +165,7 @@ class Trainer(object):
                                     log_case = []
                                     log_err = []
 
-                                    for opt_idx in range(0, 10, 1):
+                                    for opt_idx in range(100, 200, 1):
                                         y_true = valid_y[opt_idx]
                                         x_input_opt = valid_x[opt_idx]
                                         y0 = [0.5, 0.5, 0.5, 0.5]
@@ -177,7 +179,7 @@ class Trainer(object):
                                             case = -1
                                         else:
                                             y_pred, err_opt, loss_opt, cur, y_refine, err_refine, case = \
-                                                self.opt_attack(x_input_opt, y_true, y0, itr=150, bias=bias,
+                                                self.opt_attack(x_input_opt, y_true, y0, itr=250, bias=bias,
                                                                 theta=theta, c_wd=c_wd,
                                                                 loss_t=loss_t, y_t1=y_t1, y_t2=y_t2)
                                                 # self.opt_attack(x_input_opt, y_true, y0, itr=150, bias=bias,
@@ -195,40 +197,54 @@ class Trainer(object):
                                         log_idx += [opt_idx]
                                         log_erri += int(err_refine.any())
                                     log_err += [log_erri]
-                                    np.savez('./att_new_new/traffic_sign_{}_{}_{}_{}_{}_{}.npy'.format(loss_t,y_t1,y_t2,c_wd,theta,bias),
+                                    np.savez('./att_new_new_new_1111/{}_{}_{}_{}_{}_{}_{}.npy'.format(name,loss_t,y_t1,y_t2,c_wd,theta,bias),
                                              log_err=log_err,log_y_true=log_y_true,log_y_pred=log_y_pred,log_y_pred_ref=log_y_pred_ref,log_case=log_case,log_idx=log_idx)
         return log_err
 
-    def validation(self,valid_x, valid_y, trained_model, para_list, gpu_idx=0):
+    def test(self,valid_x, valid_y, trained_model, para_list, name='traffic_sign', gpu_idx=0):
         with tf.device('gpu:{}'.format(gpu_idx)):
             self.saver.restore(self.sess,trained_model)
 
-            log_y_true = []
-            log_y_pred = []
-            log_err_opt = []
-            log_loss_opt = []
-            log_cur_opt = []
-            log_y_pred_ref = []
-            log_err_opt_ref = []
-            log_x_input = []
-            log_idx = []
-            log_case = []
-            log_err = []
-
             for loss_t in para_list[0]:
                 for y_t1 in para_list[1]:
-                    for y_t2 in para_list[2]:
+                    for y_t_inc in para_list[2]:
+                        y_t2 = y_t1 + y_t_inc
                         for c_wd in para_list[3]:
                             for theta in para_list[4]:
                                 for bias in para_list[5]:
                                     log_erri = 0
-                                    for opt_idx in range(0, 5, 1):
-                                        y_true = valid_y
+                                    log_y_true = []
+                                    log_y_pred = []
+                                    log_err_opt = []
+                                    log_loss_opt = []
+                                    log_cur_opt = []
+                                    log_y_pred_ref = []
+                                    log_err_opt_ref = []
+                                    log_x_input = []
+                                    log_idx = []
+                                    log_case = []
+                                    log_err = []
+
+                                    for opt_idx in range(36, len(valid_y), 1):
+                                        y_true = valid_y[opt_idx]
                                         x_input_opt = valid_x[opt_idx]
-                                        y0 = [0.5, 0.5, 0.5, 0.5]
-                                        y_pred, err_opt, loss_opt, cur, y_refine, err_refine, case = \
-                                            self.opt_attack(x_input_opt, y_true, y0, itr=30, bias=bias, theta=theta, c_wd=c_wd,
-                                                            loss_t=loss_t, y_t1=y_t1, y_t2=y_t2)
+                                        y0 = [0.5]*3
+                                        if log_erri > 30:
+                                            y_pred = y0
+                                            err_opt = y0
+                                            loss_opt = 1
+                                            cur = 1
+                                            y_refine = np.asarray(0.)
+                                            err_refine = np.asarray(0.)
+                                            case = -1
+                                        else:
+                                            y_pred, err_opt, loss_opt, cur, y_refine, err_refine, case = \
+                                                self.opt_attack(x_input_opt, y_true, y0, itr=250, bias=bias,
+                                                                theta=theta, c_wd=c_wd,
+                                                                loss_t=loss_t, y_t1=y_t1, y_t2=y_t2)
+                                                # self.opt_attack(x_input_opt, y_true, y0, itr=150, bias=bias,
+                                                #                     theta=theta, c_wd=0.02,
+                                                #                     loss_t=0.3, y_t1=0.7, y_t2=0.8)
                                         log_y_pred += [y_pred]
                                         log_err_opt += [err_opt]
                                         log_y_pred_ref += [y_refine]
@@ -239,102 +255,19 @@ class Trainer(object):
                                         log_y_true += [y_true]
                                         log_case += [case]
                                         log_idx += [opt_idx]
-                                        log_erri += np.sum(np.abs(err_refine))
+                                        log_erri += int(err_refine.any())
                                     log_err += [log_erri]
+                                    np.savez('./att_new_new_new/testing/final/{}_{}_{}_{}_{}_{}_{}.npy'.format(name,loss_t,y_t1,y_t2,c_wd,theta,bias),
+                                             log_err=log_err,log_y_true=log_y_true,log_y_pred=log_y_pred,log_y_pred_ref=log_y_pred_ref,log_case=log_case,log_idx=log_idx)
         return log_err
 
-    def test(self,testing_dataset, trained_model, CPPN, gpu_idx=0):
-        with tf.device('gpu:{}'.format(gpu_idx)):
-            self.saver.restore(self.sess,trained_model)
-            raw_data = np.load(testing_dataset)
-
-            # (self.X_train, self.y_train), (self.X_test, self.y_test) = CRS()
-            # nn = np.load('/home/exx/Documents/Hope/rec_crs.npy')
-            # crs = nn.item()['cross_img']
-            # crs_img = np.asarray(np.reshape(crs, (crs.shape[0], 1, 64, 64)), 'float32') * 2 - 255.
-            # i = 10
-            # self.x_input_crs = crs_img[i * self.batch_size: (i + 1) * self.batch_size]
-            # crs_label = nn.item()['cross_label']
-            # self.y_input_crs = crs_label[i * self.batch_size: (i + 1) * self.batch_size]
-
-            tt_log_y_pred = []
-            tt_log_err_opt = []
-            tt_log_loss_opt = []
-            tt_log_y_pred_ref = []
-            tt_log_err_opt_ref = []
-            tt_log_x_input = []
-            tt_log_y_true = []
-            tt_log_err_bf = []
-            tt_log_err_mf = []
-            tt_log_idx = []
-            tt_log_case = []
-
-            c_wd = 0.0015
-            loss_t = 0.3
-            y_t1 = 0.5
-            y_t2 = 0.6
-            for theta in [7.]:
-                for bias in [-6.,]:
-                    log_y_pred = []
-                    log_err_opt = []
-                    log_loss_opt = []
-                    log_cur_opt = []
-                    log_y_pred_ref = []
-                    log_err_opt_ref = []
-                    log_x_input = []
-                    log_y_true = []
-                    log_err_bf = []
-                    log_err_mf = []
-                    log_idx = []
-                    log_case = []
-                    for opt_idx in range(0,100,1):
-                        if CPPN:
-                            y_true = [0,0]
-                            x_input_opt = raw_data['scaled_features_-255_to_255'][opt_idx]
-                        else:
-                            y_true = raw_data['label']
-                            x_input_opt = raw_data['data'][opt_idx].transpose(2,0,1)
-                        y0 = [0.5,0.5,0.5,0.5]
-                        y_pred, err_opt, loss_opt, cur, y_refine, err_refine, case =\
-                            self.opt_attack(x_input_opt, y_true, y0, itr=30, bias=bias, theta=theta, c_wd=c_wd,
-                                            loss_t=loss_t, y_t1 = y_t1, y_t2 = y_t2)
-                        log_y_pred += [y_pred]
-                        log_err_opt += [err_opt]
-                        log_y_pred_ref += [y_refine]
-                        log_err_opt_ref += [err_refine]
-                        log_loss_opt += [loss_opt]
-                        log_cur_opt += [cur]
-                        log_x_input += [x_input_opt]
-                        log_y_true += [y_true]
-                        log_case += [case]
-                        # if CPPN:
-                        #     log_err_bf += [np.round(raw_data['binarized_scaled_features_classification'][opt_idx] - y_true)]
-                        # else:
-                        #     log_err_bf += [np.round(raw_data['bin_filt_class'][opt_idx] - y_true)]
-                        #     log_err_mf += [np.round(raw_data['median_filt_class'][opt_idx] - y_true)]
-                        log_idx += [opt_idx]
-
-                    tt_log_y_pred += log_y_pred
-                    tt_log_err_opt += log_err_opt
-                    tt_log_loss_opt += log_loss_opt
-                    tt_log_y_pred_ref += log_y_pred_ref
-                    tt_log_err_opt_ref += log_err_opt_ref
-                    tt_log_x_input += log_x_input
-                    tt_log_y_true += log_y_true
-                    tt_log_err_bf += log_err_bf
-                    tt_log_err_mf += log_err_mf
-                    tt_log_idx += log_idx
-                    tt_log_case += log_case
-
-        return  tt_log_y_pred, tt_log_err_opt, tt_log_loss_opt, tt_log_y_pred_ref, tt_log_err_opt_ref, \
-                tt_log_x_input, tt_log_y_true, tt_log_err_bf, tt_log_err_mf, tt_log_idx, tt_log_case
 
     def opt_attack(self, x_input_opt, y_true, y0, itr=50, bias=0., theta=0.3, c_wd=0.001, loss_t = 0.3, y_t1 = 0.5, y_t2=0.6):
         temp = set(tf.all_variables())
         self.y_input_opt = tf.Variable(y0,name='y_input_opt')
 
         with tf.variable_scope("D", reuse=True):
-            x_input_opt = np.tile(x_input_opt, (2 * self.batch_size, 1, 1, 1))
+            x_input_opt = np.tile(x_input_opt, (self.batch_size, 1, 1, 1))
             self.d_z_opt_initial = Encoder(norm_img(x_input_opt), self.z_num, self.repeat_num,
                            self.conv_hidden_num, self.data_format)
 
@@ -343,17 +276,19 @@ class Trainer(object):
             self.y_input_opt_sig = tf.sigmoid(self.y_input_opt)
             self.d_z_opt = tf.tile(tf.expand_dims(self.z0,0),(self.batch_size*2,1))
             y_opt = tf.tile(tf.expand_dims(self.y_input_opt,0), (self.batch_size,1))
-            self.d_out_opt, self.D_sub_norm_opt = Decoder(y_opt, self.d_z_opt, self.channel, self.z_num,
-                                                  self.repeat_num, self.conv_hidden_num, self.data_format)
-            # self.d_out_opt_sig = tf.zeros_like(self.d_out_opt)
-            # for net_i, out_i in enumerate(self.D_sub_norm_opt):
-            #     self.d_out_opt_sig += self.y_input_opt[net_i] * tf.sigmoid(out_i)
+
+            self.G_norm, self.G_sub_norm = GeneratorCNN(
+		    y_opt, self.d_z_opt, self.conv_hidden_num, self.channel,
+		    self.repeat_num, self.data_format)
+
+            self.d_out_opt, self.D_sub_norm_opt = self.G_norm, self.G_sub_norm
+
             self.bias = tf.Variable(bias)
             self.d_out_opt_sig = tf.sigmoid(theta*self.d_out_opt+self.bias)
 
         self.loss_opt = tf.reduce_mean(tf.abs(self.d_out_opt_sig - norm_img(x_input_opt))) + c_wd*tf.norm(self.y_input_opt)
-        opt = tf.train.AdamOptimizer(0.01)
-        opt_sgd = tf.train.GradientDescentOptimizer(0.01)
+        opt = tf.train.AdamOptimizer(0.001)
+        opt_sgd = tf.train.GradientDescentOptimizer(0.001)
         grads_g = opt.compute_gradients(self.loss_opt, var_list=[self.y_input_opt]+[self.z0])
         apply_gradient_opt = opt.apply_gradients(grads_g, global_step=self.step)
         self.sess.run(tf.initialize_variables(set(tf.all_variables()) - temp))
@@ -363,7 +298,7 @@ class Trainer(object):
             # x_pred = self.sess.run(self.d_out_opt-norm_img(x_input_opt), {self.y_input_opt: self.y_pred, self.z0: self.z_pred})
             # np.mean(np.abs(norm_img(x_input_opt) - x_pred))
 
-        self.y_pred = self.y_input_opt.eval(session=self.sess)
+        self.y_pred = np.clip(self.y_input_opt.eval(session=self.sess),0,1.49)
         self.z_pred = self.z0.eval(session=self.sess)
         self.err_opt = y_true - np.round(self.y_pred)
 
@@ -379,7 +314,7 @@ class Trainer(object):
         self.y_refine = self.y_pred
         if tt>loss_t:
             # noise
-            self.y_refine = [0,0,0,0]
+            self.y_refine = [0]*3
             case = 1
         else:
             case = 2
@@ -387,6 +322,7 @@ class Trainer(object):
             self.tt_refine = 1
             for idx, yi in enumerate(self.y_pred):
                 if yi < y_t2 and yi > y_t1:
+
                     for y_test_i in [0, 1]:
                         y_test = np.round(self.y_pred)
                         y_test[idx] = y_test_i
@@ -415,6 +351,7 @@ class Trainer(object):
     #
 
 
+
     def train(self):
 
         from tqdm import tqdm
@@ -426,7 +363,7 @@ class Trainer(object):
 
 
         x_input_fix = self.X_test[0 * self.batch_size:(0 + 1) * self.batch_size]
-        y_input_fix = self.y_test[0 * self.batch_size:(0 + 1) * self.batch_size]
+        y_input_fix = self.y_test[0 * self.batch_size:(0 + 1) * self.batch_size,1:]
         mu, sigma = 0, 1  # mean and standard deviation
         z_input_fix = np.random.normal(mu, sigma, (self.batch_size, self.z_num)).astype('float32')
         feed_dict_fix = {self.x: x_input_fix, self.y: y_input_fix, self.z: z_input_fix}
@@ -434,11 +371,11 @@ class Trainer(object):
         counter = 0
         gamma = 0.5
         for epoch in range(5000):
-            it_per_ep = len(self.X_train) / self.batch_size
+            it_per_ep = 90#len(self.X_train) / self.batch_size
             for i in tqdm(range(it_per_ep)):
                 counter += 1
                 x_input = self.X_train[i * self.batch_size:(i + 1) * self.batch_size]
-                y_input = self.y_train[i * self.batch_size:(i + 1) * self.batch_size]
+                y_input = self.y_train[i * self.batch_size:(i + 1) * self.batch_size,1:]
                 z_input = np.random.normal(mu, sigma, (self.batch_size, self.z_num)).astype('float32')
                 feed_dict = {self.x: x_input, self.y: y_input, self.z: z_input, self.gamma:gamma}
                 result = self.sess.run([self.d_loss_real, self.d_loss_fake, self.d_loss, self.g_loss, self.k_update,
@@ -477,7 +414,7 @@ class Trainer(object):
                     self.summary_writer.add_summary(summary, counter)
                     self.summary_writer.flush()
 
-    def build_model(self, n_net=4):
+    def build_model(self, n_net=3):
 
         self.x = tf.placeholder(tf.float32, [self.batch_size, 1, self.imsize, self.imsize])
         self.x_norm = x = norm_img(self.x)
@@ -509,7 +446,7 @@ class Trainer(object):
 
                     with tf.variable_scope('D') as vs_d:
                         self.all_x = tf.concat([self.G_norm, x], 0)
-                        self.d_z = Encoder(self.all_x, self.z_num, self.repeat_num,
+                        self.d_z, self.act = act_Encoder(self.all_x, self.z_num, self.repeat_num,
                                            self.conv_hidden_num, self.data_format)
                         L = 1
                         # self.d_zg, z_mean, z_log_var = my_sampling(self.d_z, n_net, L)
@@ -524,8 +461,52 @@ class Trainer(object):
                             self.repeat_num, self.data_format)
                     self.loss_enc_gen = 80  * tf.reduce_mean(tf.square(self.G_norm_r  - x))
 
+                    tf.get_variable_scope().reuse_variables()
+                    with tf.variable_scope('G', reuse=True):
+                        self.d_z_f, self.d_z_r = tf.split(self.d_z, 2)
+                        self.G_norm_r_eps, self.G_sub_norm_r_eps = GeneratorCNN(
+                            self.y, self.d_z_r + 0.001 * tf.random_normal([self.batch_size, self.z_num]),
+                            self.conv_hidden_num, self.channel,
+                            self.repeat_num, self.data_format)
+
+                    tf.get_variable_scope().reuse_variables()
+                    with tf.variable_scope('D', reuse=True) :
+                        all_x = tf.concat([self.G_norm_r_eps, self.G_norm_r_eps], 0)
+                        self.d_z_sample, self.act_sample = act_Encoder(all_x, self.z_num, self.repeat_num,
+                                           self.conv_hidden_num, self.data_format)
+
+                    from style import style_loss, total_style_cost
+                    # self.style_loss_sub = []
+                    # self.style_loss = 0.
+                    # for i in range(n_net):
+                    #     imag1 = self.G_sub_norm_r_eps[i]
+                    #     imag1 = tf.transpose(tf.concat([imag1, imag1, imag1], 1), (0, 2, 3, 1))
+                    #     imag2 = tf.split(self.D_sub_norm[i], 2)[1]
+                    #     imag2 = tf.transpose(tf.concat([imag2, imag2, imag2], 1), (0, 2, 3, 1))
+                        # loss_i = 1 * total_style_cost(imag1, imag2, self.batch_size)
+                        # self.style_loss_sub += [loss_i]
+                        # self.style_loss += loss_i
+                    self.gsub_loss_sub = []
+                    self.gsub_loss = 0.
+                    self.style_loss_sub = []
+                    self.style_loss = 0.
+                    for i in range(n_net):
+                        imag1 = tf.split(self.D_sub_norm[i], 2)[0]
+                        imag2 = self.G_sub_norm[i]
+                        loss_i = tf.reduce_mean(
+                            tf.reduce_mean(tf.abs(imag1 - imag2), (1, 2, 3)) / tf.reduce_mean(tf.abs(imag1), (1, 2, 3)))
+                        c_i = (1 + tf.reduce_sum(self.y[:, i])) / (n_net + self.batch_size)
+                        self.gsub_loss_sub += [loss_i / c_i]
+                        self.gsub_loss += loss_i / c_i
+
+                        enc_out_f, _ = tf.split(self.act_sample[i], 2)
+                        _, enc_out_r = tf.split(self.act[i], 2)
+                        style_loss_i = 1e4*style_loss(enc_out_r, enc_out_f, self.batch_size, 1.)
+                        self.style_loss_sub += [style_loss_i]
+                        self.style_loss += style_loss_i
+
                     self.pt_z, self.nom, self.denom =  calc_pt_Angular(tf.split(self.d_z,2)[0],self.batch_size)
-                    self.kl, self.m, self.dzf_mean_diag = calc_eclipse_loss_analy(self.d_z,self.z,n_net)
+                    self.kl, self.m, self.dzf_mean_diag = wy_calc_eclipse_loss_analy(self.d_z,self.z,self.y,n_net)
                     self.kl_f, self.kl_r = self.kl
                     self.m_f, self.m_r = self.m
                     self.mode_variance = tf.reduce_mean(tf.abs(self.dzf_mean_diag))
@@ -544,6 +525,7 @@ class Trainer(object):
                         self.AE_x_norm += [AE_x_norm_i]
                     self.d_loss_real = 80  * tf.reduce_mean(tf.square(list2tensor(self.AE_x_norm) - tf.tile(self.x_norm,[L,1,1,1])))
                     self.d_loss_fake = 80 * tf.reduce_mean(tf.square(list2tensor(self.AE_G_norm) - tf.tile(self.G_norm,[L,1,1,1])))
+                    self.d_loss_fake = tf.Variable(0.)
 
                     # self.part_AE_G_norm = []
                     # self.part_AE_x_norm = []
@@ -566,12 +548,12 @@ class Trainer(object):
                     for i, img_i in enumerate(self.G_sub_norm):
                         self.gall += img_i
                     self.all_g_loss = 1 * tf.reduce_mean(tf.square(self.dgall - self.gall))
-                    self.negative_penalty_g = tf.reduce_sum(tf.nn.relu(-list2tensor(self.G_sub_norm)))
-                    self.negative_penalty_d = tf.reduce_sum(tf.nn.relu(-list2tensor(self.D_sub_norm)))
-                    self.r_dis = 500*(self.kl_mean_r + self.m_r)
-                    self.f_dis = 500*(self.kl_mean_f + self.m_f)
-                    self.g_loss = self.d_loss_fake + self.f_dis + (self.pt_z) + 10*(1-self.pt_x) + 0.1*self.negative_penalty_g+ self.loss_enc_gen#+ self.all_g_loss #+ 20*self.pt_z
-                    self.d_loss = self.d_loss_real - self.k_t * self.g_loss + self.r_dis + 0.1*self.negative_penalty_d+ self.loss_enc_gen#+ 5*self.mode_variance
+                    self.negative_penalty_g = tf.reduce_mean(tf.nn.relu(-list2tensor(self.G_sub_norm)))
+                    self.negative_penalty_d = tf.reduce_mean(tf.nn.relu(-list2tensor(self.D_sub_norm)))
+                    self.r_dis = (self.kl_mean_r + self.m_r)
+                    self.f_dis = (self.kl_mean_f + self.m_f)
+                    self.g_loss = self.d_loss_fake + self.f_dis + 3*(self.pt_z) + 3*(1-self.pt_x) + 0.1*self.negative_penalty_g+ self.loss_enc_gen + self.gsub_loss + self.style_loss#+ self.all_g_loss #+ 20*self.pt_z
+                    self.d_loss = self.d_loss_real - self.k_t * self.g_loss + self.r_dis + 0.1*self.negative_penalty_d+ self.loss_enc_gen #+ 5*self.mode_variance
                     # self.d_loss = self.d_loss_real - self.k_t * self.d_loss_fake + self.r_dis + self.f_dis
                     grads_g = g_optimizer.compute_gradients(self.g_loss, var_list=self.G_var)
                     tower_grads_g.append(grads_g)
@@ -619,4 +601,12 @@ class Trainer(object):
             tf.summary.scalar("misc/negative_penalty_d", self.negative_penalty_d),
             tf.summary.scalar("misc/negative_penalty_g", self.negative_penalty_g),
             tf.summary.scalar("misc/loss_enc_gen", self.loss_enc_gen),
+            tf.summary.scalar("misc/style_loss", self.style_loss),
+            tf.summary.scalar("misc/style_loss0", self.style_loss_sub[0]),
+            tf.summary.scalar("misc/style_loss1", self.style_loss_sub[1]),
+            tf.summary.scalar("misc/style_loss2", self.style_loss_sub[2]),
+            tf.summary.scalar("misc/gsub_loss", self.gsub_loss),
+            tf.summary.scalar("misc/gsub_loss0", self.gsub_loss_sub[0]),
+            tf.summary.scalar("misc/gsub_loss1", self.gsub_loss_sub[1]),
+            tf.summary.scalar("misc/gsub_loss2", self.gsub_loss_sub[2]),
         ])

@@ -16,13 +16,13 @@ def gram_matrix(x):
     features = backend.batch_flatten(backend.permute_dimensions(x, (2, 0, 1)))
     #     features_mean,features_var =tf.nn.moments(features,axes=[0])
     features_mean = tf.reduce_mean(features, 0)
-    features = (features - features_mean) / 1
+    # features = (features - features_mean) / 1
     gram = backend.dot(features, backend.transpose(features))
     return gram
 
 
-def style_loss(style, combination, weight):
-    mb_size = style.shape[0].value
+def style_loss(style, combination, bs, weight):
+    mb_size = bs
     width = style.shape[1].value
     height = style.shape[2].value
 
@@ -30,27 +30,20 @@ def style_loss(style, combination, weight):
     channels = 3
     size = height * width
 
-    C = S =[]
-    for i in range(mb_size):
-        C += [gram_matrix(combination[i])]
-    for j in range(mb_size):
-        S += [gram_matrix(style[j])]
-    for i in range(mb_size):
-        for j in range(mb_size):
-            loss_temp = tf.add(loss_temp, backend.sum(backend.square(S[j] - C[i])) / (4. * (channels ** 2) * (size ** 2) * weight[i,j] ))
-
+    # C = S =[]
     # for i in range(mb_size):
-    #     C = gram_matrix(combination[i])
-    #     S = gram_matrix(style[i])
-    #     loss_temp = tf.add(loss_temp, backend.sum(backend.square(S - C)) / (4. * (channels ** 2) * (size ** 2))) * 1e-7
-
-    return loss_temp*1e-6
+    #     C += [gram_matrix(combination[i])]
+    # for j in range(mb_size):
+    #     S += [gram_matrix(style[j])]
     # for i in range(mb_size):
-    #     C = gram_matrix(combination[i])
-    #     S = gram_matrix(style[i])
-    #     loss_temp = tf.add(loss_temp, backend.sum(backend.square(S - C)) / (4. * (channels ** 2) * (size ** 2))) * 1e-7
-
-    # return loss_temp
+    #     for j in range(mb_size):
+    #         loss_temp = tf.add(loss_temp, backend.sum(backend.square(S[j] - C[i])) / (4. * (channels ** 2) * (size ** 2) * weight[i,j] ))
+    # return loss_temp*1e-6
+    for i in range(mb_size):
+        C = gram_matrix(combination[i])
+        S = gram_matrix(style[i])
+        loss_temp = tf.add(loss_temp, backend.sum(backend.square(S - C)) / (4. * (channels ** 2) * (size ** 2))) * 1e-1
+    return loss_temp
 
 def load_vgg(vgg_filepath):
     f = h5py.File(vgg_filepath,'r')
@@ -233,9 +226,9 @@ def true_activation(style_image, W_vgg, b_vgg):
     return style_conv_out
 
 
-def total_style_cost(combination_image, style_image, z1, z2):
+def total_style_cost(combination_image, style_image, bs):
     # Style transfer
-    W_vgg, b_vgg = load_vgg('/home/doi5/Documents/Hope/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5')
+    W_vgg, b_vgg = load_vgg('/home/exx/Documents/Hope/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5')
     gen_conv_out = gen_activation(combination_image, W_vgg, b_vgg)
     style_conv_out = true_activation(style_image, W_vgg, b_vgg)
 
@@ -244,18 +237,18 @@ def total_style_cost(combination_image, style_image, z1, z2):
     [conv_out1_S, conv_out2_S, conv_out3_S, conv_out4_S, conv_out5_S, conv_out6_S, conv_out7_S, conv_out8_S, conv_out9_S,
                     conv_out10_S, conv_out11_S, conv_out12_S, conv_out13_S] = style_conv_out
 
-    num = 32
-    dd = tf.tile(tf.expand_dims(z1, 1), [1, num, 1]) - tf.tile(tf.expand_dims(z2, 0), [num, 1, 1])
-    weight = tf.sqrt(tf.reduce_sum(tf.square(dd), 2))  # dist[i,j] = z1[i]-z2[j]
+    # dd = tf.tile(tf.expand_dims(z1, 1), [1, bs, 1]) - tf.tile(tf.expand_dims(z2, 0), [bs, 1, 1])
+    # weight = tf.sqrt(tf.reduce_sum(tf.square(dd), 2))  # dist[i,j] = z1[i]-z2[j]
     # weight = weight / tf.tile(tf.expand_dims(tf.reduce_sum(dist, 1), 1),[1, 16])  # row-wise summation, duplicate to matrix, normalize
+    weight = 1
+    sl1 = style_loss(conv_out1_S, conv_out1, bs, weight)
+    sl2 = style_loss(conv_out2_S, conv_out2, bs, weight)
+    sl3 = style_loss(conv_out3_S, conv_out3, bs, weight)
+    # sl4 = style_loss(conv_out10_S, conv_out10, bs, weight)
+    sl = 0.5*sl1 + 0.5*sl2 + 0.5*sl3# + 2.0*sl4
 
-    sl1 = style_loss(conv_out2_S, conv_out2, weight)
-    sl2 = style_loss(conv_out4_S, conv_out4, weight)
-    sl3 = style_loss(conv_out7_S, conv_out7, weight)
-    sl4 = style_loss(conv_out10_S, conv_out10, weight)
-    sl = sl1 + sl2 + sl3 + sl4
-
-    return sl,weight, conv_out2_S, conv_out2, sl1, conv_out4_S, conv_out4, sl2
+    return sl
+    # return 1/(3-tf.log(sl))
 
 import numpy as np
 
